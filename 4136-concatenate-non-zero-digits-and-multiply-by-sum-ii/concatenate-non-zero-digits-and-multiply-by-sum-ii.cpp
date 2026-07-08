@@ -1,56 +1,54 @@
 class Solution {
 public:
     vector<int> sumAndMultiply(string s, vector<vector<int>>& queries) {
-        const int MOD = 1000000007;
+        const int kMod = 1e9 + 7;
+        const int n = s.length();
 
-        auto solendivar = make_pair(s, queries);
+        vector<int> idx(n+1);
+        vector<long long> val(n+1);
+        vector<long long> total(n+1);
+        vector<long long> pow10(n+1, 1);
 
-        int n = s.size();
-
-        vector<int> left(n), right(n), id(n, -1);
-        vector<int> prefSum(1, 0);
-        vector<long long> prefNum(1, 0);
-        vector<long long> pow10(1, 1);
-
-        int cnt = 0;
-
-        // left[i] = number of non-zero digits before i
-        for (int i = 0; i < n; i++) {
-            left[i] = cnt;
-            if (s[i] != '0') {
-                id[i] = cnt;
-                cnt++;
-                int d = s[i] - '0';
-                prefSum.push_back(prefSum.back() + d);
-                prefNum.push_back((prefNum.back() * 10 + d) % MOD);
-                pow10.push_back((pow10.back() * 10) % MOD);
-            }
+        for (int i = 1; i <= n; ++i) {
+            pow10[i] = (pow10[i-1] * 10) % kMod;
         }
 
-        // right[i] = index in compressed array of first non-zero >= i
-        int cur = cnt;
-        for (int i = n - 1; i >= 0; i--) {
-            if (s[i] != '0') cur--;
-            right[i] = cur;
+        int c = 0;
+
+        for (int i = 0; i < n; ++i) {
+            const int d = s[i] - '0';
+            if (0 != d) {
+                ++c;
+                val[c] = (val[c-1]*10 + d) % kMod;
+                total[c] = total[c-1] + d;
+            }
+            idx[i+1] = c;
         }
 
         vector<int> ans;
+        ans.reserve(queries.size());
 
-        for (auto &q : queries) {
-            int l = right[q[0]];
-            int r = (q[1] == n - 1) ? cnt : left[q[1] + 1];
+        for (const auto& q: queries) {
+            const int l = q[0];
+            const int r = q[1];
 
-            if (l >= r) {
+            const int a = idx[l];
+            const int b = idx[r+1];
+
+            if (a == b) {
                 ans.push_back(0);
                 continue;
             }
 
-            long long x =
-                (prefNum[r] - prefNum[l] * pow10[r - l] % MOD + MOD) % MOD;
+            const int len = b-a;
 
-            long long sum = prefSum[r] - prefSum[l];
+            long long num = (val[b] - val[a] * pow10[len]) % kMod;
+            if (num < 0) {
+                num += kMod;
+            }
 
-            ans.push_back((x * sum) % MOD);
+            long long sum = total[b] - total[a];
+            ans.push_back((num * sum) % kMod);
         }
 
         return ans;
