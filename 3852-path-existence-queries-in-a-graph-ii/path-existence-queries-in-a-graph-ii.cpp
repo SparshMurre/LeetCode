@@ -1,63 +1,58 @@
+static int st[100001][18] = {0};
 class Solution {
 public:
-    vector<int> pathExistenceQueries(int n, vector<int>& nums, int maxDiff,
-                                     vector<vector<int>>& queries) {
-        vector<pair<int, int>> pairs;
-        for (int i = 0; i < n; i++)
-            pairs.push_back({nums[i], i});
+    vector<int> pathExistenceQueries(int n, vector<int>& nums, int maxDiff, vector<vector<int>>& queries) {
+        vector<pair<int, int>> vec;
+        for (int i = 0; i < n; ++i) {
+            vec.push_back({nums[i], i});
+        }
+        sort(vec.begin(), vec.end());
 
-        sort(pairs.begin(), pairs.end());
-
-        const int LOG = 20;
-        vector<vector<int>> up(n, vector<int>(LOG));
-
-        int r = n - 1;
-        for (int l = n - 1; l >= 0; l--) {
-            while (pairs[r].first - pairs[l].first > maxDiff)
-                r--;
-
-            int u = pairs[l].second;
-            int v = pairs[r].second;
-
-            up[u][0] = v;
-
-            for (int k = 1; k < LOG; k++)
-                up[u][k] = up[up[u][k - 1]][k - 1];
+        vector<int> getSortIdx(n);
+        for (int i = 0; i < n; ++i) {
+            getSortIdx[vec[i].second] = i;
         }
 
-        vector<int> ans;
-
-        for (auto &q : queries) {
-            int u = q[0], v = q[1];
-
-            if (nums[u] > nums[v])
-                swap(u, v);
-
-            if (u == v) {
-                ans.push_back(0);
+        // vector<vector<int>> st(n, vector<int>(18, n - 1));
+        int l = 0;
+        for (int r = 0; r < n; ++r) {
+            while (vec[r].first - vec[l].first > maxDiff) {
+                st[l][0] = r - 1;
+                ++l;
+            }
+        }
+        while (l < n) {
+            st[l][0] = n - 1;
+            l++;
+        }
+        for (int j = 1; j < 18; ++j) {
+            for (int i = 0; i < n; ++i) {
+                st[i][j] = st[st[i][j - 1]][j - 1];
+            }
+        }
+        int m = queries.size();
+        vector<int> ans(m, -1);
+        for (int i = 0; i < m; ++i) {
+            int a = getSortIdx[queries[i][0]];
+            int b = getSortIdx[queries[i][1]];
+            if (a > b) swap(a, b);
+            if (a == b) {
+                ans[i] = 0;
                 continue;
             }
 
-            if (nums[u] == nums[v]) {
-                ans.push_back(1);
-                continue;
-            }
-
-            int dist = 0;
-
-            for (int k = LOG - 1; k >= 0; k--) {
-                if (nums[up[u][k]] < nums[v]) {
-                    dist += (1 << k);
-                    u = up[u][k];
+            int cur = a;
+            int step = 0;
+            for (int j = 17; j >= 0; --j) {
+                if (st[cur][j] < b) {
+                    step += (1 << j);
+                    cur = st[cur][j];
                 }
             }
-
-            if (nums[up[u][0]] < nums[v])
-                ans.push_back(-1);
-            else
-                ans.push_back(dist + 1);
+            if (st[cur][0] >= b) {
+                ans[i] = step + 1;
+            }
         }
-
         return ans;
     }
 };
