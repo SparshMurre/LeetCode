@@ -1,33 +1,42 @@
 class Solution {
 public:
     vector<int> gcdValues(vector<int>& nums, vector<long long>& queries) {
-        int mx = *max_element(nums.begin(), nums.end());
+        int maxNum = *max_element(nums.begin(), nums.end());
+        long long cnt[maxNum + 1];
+        memset(cnt, 0, sizeof(cnt));
+        for (const int num: nums)
+            ++cnt[num];
+        for (int num = 1; num <= maxNum; num++) {
+            for (int i = num * 2; i <= maxNum; i += num)
+                cnt[num] += cnt[i];
+        }
+        for (int num = 1; num <= maxNum; num++)
+            cnt[num] = cnt[num] * (cnt[num] - 1) / 2;
+        for (int num = maxNum - 1; num >= 1; num--) {
+            for (int i = num * 2; i <= maxNum; i += num)
+                cnt[num] -= cnt[i];
+        }
+        for (int num = 2; num <= maxNum; num++)
+            cnt[num] += cnt[num - 1];
+        
+        // for (int i = 1; i <= maxNum; i++)
+        //     cout << i << "," << cnt[i] << endl;
 
-        vector<int> freq(mx + 1, 0);
-        for (int x : nums) freq[x]++;
-
-        vector<long long> cntG(mx + 1, 0);
-
-        for (int g = mx; g >= 1; g--) {
-            long long cnt = 0;
-            for (int j = g; j <= mx; j += g) {
-                cnt += freq[j];
-                cntG[g] -= cntG[j];
+        vector<int> res;
+        res.reserve(queries.size());
+        for (long long query: queries) {
+            ++query;
+            int l = 1, r = maxNum;
+            while (l < r) {
+                int m = l + (r - l) / 2;
+                if (cnt[m] >= query) {
+                    r = m;
+                } else {
+                    l = m + 1;
+                }
             }
-            cntG[g] += cnt * (cnt - 1) / 2;
+            res.push_back(r);
         }
-
-        vector<long long> prefix(mx + 1, 0);
-        for (int i = 1; i <= mx; i++)
-            prefix[i] = prefix[i - 1] + cntG[i];
-
-        vector<int> ans;
-        for (long long q : queries) {
-            ans.push_back(
-                lower_bound(prefix.begin() + 1, prefix.end(), q + 1) - prefix.begin()
-            );
-        }
-
-        return ans;
+        return res;
     }
 };
