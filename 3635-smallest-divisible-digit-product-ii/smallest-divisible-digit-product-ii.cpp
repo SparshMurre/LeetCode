@@ -1,136 +1,57 @@
 
 class Solution {
- public:
-  string smallestNumber(string num, long long t) {
-    const auto [primeCount, isDivisible] = getPrimeCount(t);
-    if (!isDivisible)
-      return "-1";
-
-    const unordered_map<int, int> factorCount = getFactorCount(primeCount);
-    if (sumValues(factorCount) > (int)num.length())
-      return construct(factorCount);
-
-    unordered_map<int, int> primeCountPrefix = getPrimeCount(num);
-    int firstZeroIndex = num.find('0');
-    if (firstZeroIndex == (int)string::npos) {
-      firstZeroIndex = num.length();
-      if (isSubset(primeCount, primeCountPrefix))
-        return num;
-    }
-
-    for (int i = num.length() - 1; i >= 0; --i) {
-      const int d = num[i] - '0';
-      // Remove the current digit's factors from primeCountPrefix.
-      primeCountPrefix = subtract(primeCountPrefix, kFactorCounts.at(d));
-      const int spaceAfterThisDigit = num.length() - 1 - i;
-      if (i > firstZeroIndex)
-        continue;
-      for (int biggerDigit = d + 1; biggerDigit < 10; ++biggerDigit) {
-        // Compute the required factors after replacing with a larger digit.
-        const unordered_map<int, int> factorsAfterReplacement =
-            getFactorCount(subtract(subtract(primeCount, primeCountPrefix),
-                                     kFactorCounts.at(biggerDigit)));
-        // Check if the replacement fits within the available space.
-        if (sumValues(factorsAfterReplacement) <= spaceAfterThisDigit) {
-          const int fillOnes =
-              spaceAfterThisDigit - sumValues(factorsAfterReplacement);
-          return num.substr(0, i) +        // Keep the prefix unchanged.
-                 to_string(biggerDigit) +   // Replace the current digit.
-                 string(fillOnes, '1') +    // Fill remaining space with '1'.
-                 construct(factorsAfterReplacement);
+public:
+    string smallestNumber(string num, long long t) {
+        long long temp = t;
+        for (int i = 2; i <= 9; i++) {
+            while (temp % i == 0) {
+                temp /= i;
+            }
         }
-      }
+        if (temp > 1) {
+            return "-1";
+        }
+        int n = num.length();
+        vector<long long> rem(n + 1);
+        rem[0] = t;
+        int pos = n - 1;
+        for (int i = 0; i < n; i++) {
+            if (num[i] == '0') {
+                pos = i;
+                break;
+            }
+            rem[i + 1] = rem[i] / gcd(rem[i], num[i] - '0');
+        }
+        if (rem[n] == 1) {
+            return num;
+        }
+
+        for (int i = pos; i >= 0; i--) {
+            while (++num[i] <= '9') {
+                long long tNow = rem[i] / gcd(rem[i], num[i] - '0');
+                int k = 9;
+                for (int j = n - 1; j > i; j--) {
+                    while (tNow % k) {
+                        k--;
+                    }
+                    tNow /= k;
+                    num[j] = '0' + k;
+                }
+                if (tNow == 1) {
+                    return num;
+                }
+            }
+        }
+
+        string ans;
+        for (int i = 9; i > 1; i--) {
+            while (t % i == 0) {
+                ans += '0' + i;
+                t /= i;
+            }
+        }
+        ans += string(max(n + 1 - (int)ans.length(), 0), '1');
+        ranges::reverse(ans);
+        return ans;
     }
-
-    // No solution of the same length exists; extend by one digit.
-    const unordered_map<int, int> factorsAfterExtension =
-        getFactorCount(primeCount);
-    return string(num.length() + 1 - sumValues(factorsAfterExtension), '1') +
-           construct(factorsAfterExtension);
-  }
-
- private:
-  const unordered_map<int, unordered_map<int, int>> kFactorCounts = {
-      {0, {}},          {1, {}},
-      {2, {{2, 1}}},    {3, {{3, 1}}},
-      {4, {{2, 2}}},    {5, {{5, 1}}},
-      {6, {{2, 1}, {3, 1}}}, {7, {{7, 1}}},
-      {8, {{2, 3}}},    {9, {{3, 2}}}};
-
-  // Returns the prime count of t and whether t is divisible by only 2,3,5,7.
-  pair<unordered_map<int, int>, bool> getPrimeCount(long long t) {
-    unordered_map<int, int> count{{2, 0}, {3, 0}, {5, 0}, {7, 0}};
-    for (const int prime : {2, 3, 5, 7}) {
-      while (t % prime == 0) {
-        t /= prime;
-        ++count[prime];
-      }
-    }
-    return {count, t == 1};
-  }
-
-  // Returns the prime count of `num`.
-  unordered_map<int, int> getPrimeCount(const string& num) {
-    unordered_map<int, int> count{{2, 0}, {3, 0}, {5, 0}, {7, 0}};
-    for (const char c : num)
-      for (const auto& [prime, freq] : kFactorCounts.at(c - '0'))
-        count[prime] += freq;
-    return count;
-  }
-
-  // Converts prime-exponent needs into the minimal-length multiset of
-  // digits 2..9 that realizes them (greedily prefers larger digits).
-  unordered_map<int, int> getFactorCount(const unordered_map<int, int>& count) {
-    const int count8 = count.at(2) / 3;       // 2^3 = 8
-    const int remaining2 = count.at(2) % 3;
-    const int count9 = count.at(3) / 2;       // 3^2 = 9
-    int count3 = count.at(3) % 2;
-    int count4 = remaining2 / 2;              // 2^2 = 4
-    int count2 = remaining2 % 2;
-    int count6 = 0;
-    if (count2 == 1 && count3 == 1) {         // combine 2*3 -> 6
-      count2 = 0;
-      count3 = 0;
-      count6 = 1;
-    }
-    if (count3 == 1 && count4 == 1) {         // combine 3*4 -> 2*6
-      count2 = 1;
-      count6 = 1;
-      count3 = 0;
-      count4 = 0;
-    }
-    return {{2, count2}, {3, count3}, {4, count4}, {5, count.at(5)},
-            {6, count6}, {7, count.at(7)}, {8, count8}, {9, count9}};
-  }
-
-  string construct(const unordered_map<int, int>& factors) {
-    string res;
-    for (int digit = 2; digit < 10; ++digit)
-      res += string(factors.at(digit), '0' + digit);
-    return res;
-  }
-
-  // Returns true if a's counts are all <= b's counts.
-  bool isSubset(const unordered_map<int, int>& a,
-                const unordered_map<int, int>& b) {
-    for (const auto& [key, value] : a)
-      if (b.at(key) < value)
-        return false;
-    return true;
-  }
-
-  // Returns a - b, clamped at 0.
-  unordered_map<int, int> subtract(unordered_map<int, int> a,
-                                    const unordered_map<int, int>& b) {
-    for (const auto& [key, value] : b)
-      a[key] = max(0, a[key] - value);
-    return a;
-  }
-
-  int sumValues(const unordered_map<int, int>& count) {
-    return accumulate(count.begin(), count.end(), 0,
-                       [](int acc, const pair<const int, int>& p) {
-                         return acc + p.second;
-                       });
-  }
 };
